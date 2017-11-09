@@ -8,16 +8,9 @@
 ## webrepl.start()
 ## gc.collect()
 
-def blink(freq):
-    from machine import Pin, PWM
-    led = Pin(2)
-    pwm = PWM(led)
-    if freq == 0:
-        pwm.deinit()
-        led(1) # turn it off
-        return
-    pwm.duty(512) # 50% on, 50% off
-    pwm.freq(freq)
+import sys
+sys.path.append('libs')
+from wemos_d1 import blink
 
 def connect_wifi(ssid, password, timeout=10):
     try:
