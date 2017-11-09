@@ -1,12 +1,31 @@
 # This file is executed on every boot (including wake-boot from deepsleep)
 #import esp
 #esp.osdebug(None)
-import gc
-import webrepl
-webrepl.start()
-gc.collect()
+#
+# enable webrepl
+## import gc
+## import webrepl
+## webrepl.start()
+## gc.collect()
+
+def blink(freq):
+    from machine import Pin, PWM
+    led = Pin(2)
+    pwm = PWM(led)
+    if freq == 0:
+        pwm.deinit()
+        led(1) # turn it off
+        return
+    pwm.duty(512) # 50% on, 50% off
+    pwm.freq(freq)
 
 def connect_wifi(ssid, password, timeout=10):
+    try:
+        _connect_wifi(ssid, password, timeout)
+    finally:
+        blink(0)
+
+def _connect_wifi(ssid, password, timeout):
     import time
     import network
     sta_if = network.WLAN(network.STA_IF)
@@ -16,6 +35,7 @@ def connect_wifi(ssid, password, timeout=10):
         return
 
     print('Scanning for available Wi-Fi networks...')
+    blink(1)
     ssids = [tup[0] for tup in sta_if.scan()]
     print(len(ssids), 'networks found:')
     for name in ssids:
@@ -27,6 +47,7 @@ def connect_wifi(ssid, password, timeout=10):
         return
     #
     print('connecting to %s...' % ssid)
+    blink(2)
     sta_if.active(True)
     timeout *= 1000 # convert from seconds to ms
     start_time = time.ticks_ms()
