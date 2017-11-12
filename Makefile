@@ -7,10 +7,13 @@ boot: kill-screen
 libs: kill-screen
 	#ampy -p $(TTY) mkdir libs
 	ampy -p $(TTY) put libs/wemos_d1.py libs/wemos_d1.py
-	ampy -p $(TTY) put libs/servomotor.py libs/servomotor.py
+	ampy -p $(TTY) put libs/potentiometer.py libs/potentiometer.py
 
 standing_wave: kill-screen
 	ampy -p $(TTY) put standing_wave/main.py main.py
+
+analog: kill-screen
+	ampy -p $(TTY) put analog/main.py main.py
 
 kill-screen:
 	@if screen -ls | grep -q upython; then screen -X -S upython quit; fi
