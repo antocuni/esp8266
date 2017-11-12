@@ -57,7 +57,7 @@ def auto_connect():
     try:
         with open('wifi.ini') as f:
             content = f.read().strip()
-    except IOError:
+    except OSError:
         print('cannot read wifi.ini, skipping Wi-Fi connection')
     else:
         ssid, password = content.split(' ')
