@@ -15,6 +15,9 @@ standing_wave: kill-screen
 analog: kill-screen
 	ampy -p $(TTY) put analog/main.py main.py
 
+potmotor: kill-screen
+	ampy -p $(TTY) put potmotor/main.py main.py
+
 kill-screen:
 	@if screen -ls | grep -q upython; then screen -X -S upython quit; fi
 
