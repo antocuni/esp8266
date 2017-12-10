@@ -40,7 +40,7 @@ def _connect_wifi(ssid, password, timeout):
         return
     #
     sta_if.connect(ssid, password)
-    if _wait_for_connection(sta_if, ssid, timeout):
+    if timeout > 0 and _wait_for_connection(sta_if, ssid, timeout):
         print('network config:', sta_if.ifconfig())
 
 def _wait_for_connection(sta_if, ssid, timeout):
@@ -66,7 +66,7 @@ def _wait_for_connection(sta_if, ssid, timeout):
     return True
 
 
-def auto_connect():
+def auto_connect(timeout=10):
     try:
         with open('wifi.ini') as f:
             content = f.read().strip()
@@ -75,9 +75,9 @@ def auto_connect():
     else:
         ssid, password = content.split(' ')
         print('Wi-Fi auto-connect: %s' % ssid)
-        connect_wifi(ssid, password)
+        connect_wifi(ssid, password, timeout=timeout)
 
 # if you want to enable Wi-Fi auto-connect, simply put a wifi.ini with only
 # one line
 #    ssid password
-auto_connect()
+auto_connect(timeout=0)
