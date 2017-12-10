@@ -1,5 +1,11 @@
 wifi.ini
 
+# I always press ctrl-A h by mistake :)
+hardcopy.0
+
+# emacs backup
+*~
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

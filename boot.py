@@ -10,7 +10,7 @@
 
 import sys
 sys.path.append('libs')
-from wemos_d1 import blink
+from led import blink
 
 def connect_wifi(ssid, password, timeout=10):
     try:

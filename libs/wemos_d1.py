@@ -18,14 +18,3 @@ TX = 1 # tx
 # note: D4 is also used to control the builtin blue led, but it's reversed
 # (when D4 is 1, the led is off)
 LED = D4
-
-def blink(freq, pin=LED):
-    from machine import Pin, PWM
-    led = Pin(pin)
-    pwm = PWM(led)
-    if freq == 0:
-        pwm.deinit()
-        led(1) # turn it off
-        return
-    pwm.duty(512) # 50% on, 50% off
-    pwm.freq(freq)

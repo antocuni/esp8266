@@ -1,4 +1,5 @@
 TTY=/dev/ttyUSB0
+MYBOARD=sonoff
 
 boot: kill-screen
 	ampy -p $(TTY) put boot.py
@@ -7,6 +8,9 @@ boot: kill-screen
 libs: kill-screen
 	#ampy -p $(TTY) mkdir libs
 	ampy -p $(TTY) put libs/wemos_d1.py libs/wemos_d1.py
+	ampy -p $(TTY) put libs/sonoff.py libs/sonoff.py
+	ampy -p $(TTY) put libs/$(MYBOARD).py libs/myboard.py
+	ampy -p $(TTY) put libs/led.py libs/led.py
 	ampy -p $(TTY) put libs/potentiometer.py libs/potentiometer.py
 
 standing_wave: kill-screen
