@@ -26,6 +26,9 @@ potmotor: kill-screen
 button_demo: kill-screen
 	ampy -p $(TTY) put libs/button.py main.py
 
+button_relay: kill-screen
+	ampy -p $(TTY) put button_relay/main.py main.py
+
 kill-screen:
 	@if screen -ls | grep -q upython; then screen -X -S upython quit; fi
 
