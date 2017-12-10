@@ -11,6 +11,7 @@ libs: kill-screen
 	ampy -p $(TTY) put libs/sonoff.py libs/sonoff.py
 	ampy -p $(TTY) put libs/$(MYBOARD).py libs/myboard.py
 	ampy -p $(TTY) put libs/led.py libs/led.py
+	ampy -p $(TTY) put libs/button.py libs/button.py
 	ampy -p $(TTY) put libs/potentiometer.py libs/potentiometer.py
 
 standing_wave: kill-screen
@@ -21,6 +22,9 @@ analog: kill-screen
 
 potmotor: kill-screen
 	ampy -p $(TTY) put potmotor/main.py main.py
+
+button_demo: kill-screen
+	ampy -p $(TTY) put libs/button.py main.py
 
 kill-screen:
 	@if screen -ls | grep -q upython; then screen -X -S upython quit; fi
