@@ -38,6 +38,9 @@ button_demo: kill-screen
 button_relay: kill-screen
 	ampy -p $(TTY) put button_relay/main.py main.py
 
+smartplug: kill-screen
+	ampy -p $(TTY) put smartplug/main.py main.py
+
 kill-screen:
 	@if screen -ls | grep -q upython; then screen -X -S upython quit; fi
 
