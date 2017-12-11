@@ -40,12 +40,15 @@ class SmartPlug(object):
     relay = Signal(Pin(RELAY, Pin.OUT, value=0))
     button = Pushbutton(Pin(BUTTON, Pin.IN))
 
-    def __init__(self):
+    def __init__(self, topic):
+        assert isinstance(topic, bytes)
+        self.topic = topic
         self.mqtt = MQTTClient(
             server=SERVER,
             keepalive=120,
             clean=True,
             clean_init=True,
+            subs_cb=self.on_receive_topic,
             )
         self.button.press_func(self.on_click)
         self.button.long_func(self.on_long_press)
@@ -68,11 +71,23 @@ class SmartPlug(object):
         self._status = v
         self.led.value(v)
         self.relay.value(v)
-        self.publish('/antocuni/xmas', str(int(v)))
+        self.publish(self.topic, str(int(v)))
 
     def publish(self, topic, msg):
         print('[PUB ]', topic, msg)
         LOOP.create_task(self.mqtt.publish(topic, msg, qos=QOS_AT_LEAST))
+
+    def on_receive_topic(self, topic, msg):
+        print('[SUB ] received', topic, msg)
+        if topic == self.topic:
+            try:
+                value = int(msg)
+            except ValueError:
+                print('[SUB ] invalid value, defaulting to 0')
+                value = 0
+            if self.status != value:
+                print('[SUB ] setting status to', value)
+                self.status = value
 
     def on_click(self):
         self.status = not self.status
@@ -100,6 +115,7 @@ class SmartPlug(object):
                 self.mqtt.close()  # Close socket
                 print('[MQTT] Waiting for server...')
         print('[MQTT] Connected')
+        await self.mqtt.subscribe(self.topic, QOS_AT_LEAST)
 
     async def main(self):
         LOOP.create_task(self.wait_for_connection())
@@ -111,6 +127,6 @@ class SmartPlug(object):
 
 
 if __name__ == '__main__':
-    app = SmartPlug()
+    app = SmartPlug(b'/antocuni/xmas')
     LOOP.run_until_complete(app.main())
     print('exit')
