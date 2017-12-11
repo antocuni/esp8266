@@ -1,6 +1,15 @@
 TTY=/dev/ttyUSB0
 MYBOARD=sonoff
 
+# remember to put the board in upload mode before running this
+erase:
+	esptool.py --port $(TTY) erase_flash
+
+# remember to put the board in upload mode before running this
+flash:
+	# this works for sonoff, probably not for D1 Mini
+	esptool.py --port $(TTY) write_flash -fs 1MB -fm dout 0x0 firmware/firmware-combined.bin
+
 boot: kill-screen
 	ampy -p $(TTY) put boot.py
 	#if [ -f wifi.ini ]; then ampy -p $(TTY) put wifi.ini; fi
