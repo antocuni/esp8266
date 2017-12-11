@@ -9,6 +9,7 @@ frozen modules:
   - mqtt_as [https://github.com/peterhinch/micropython-mqtt]
 """
 
+from micropython import const
 from machine import Pin, Signal
 from network import WLAN, STA_IF
 from sonoff import LED, BUTTON, RELAY
@@ -20,6 +21,10 @@ mqtt_as.sonoff()  # ugly way to turn on sonoff-specific behavior
 mqtt_as.MQTTClient.DEBUG = True
 LOOP = asyncio.get_event_loop()
 SERVER = 'test.mosquitto.org'
+
+QOS_AT_MOST = const(0)
+QOS_AT_LEAST = const(1)
+QOS_EXACT = const(2)
 
 def MQTTClient(**kwargs):
     """
@@ -59,10 +64,15 @@ class SmartPlug(object):
 
     @status.setter
     def status(self, v):
-        print ("setting status to", v)
+        print("[STAT] set status to", v)
         self._status = v
         self.led.value(v)
         self.relay.value(v)
+        self.publish('/antocuni/xmas', str(int(v)))
+
+    def publish(self, topic, msg):
+        print('[PUB ]', topic, msg)
+        LOOP.create_task(self.mqtt.publish(topic, msg, qos=QOS_AT_LEAST))
 
     def on_click(self):
         self.status = not self.status
@@ -95,9 +105,9 @@ class SmartPlug(object):
         LOOP.create_task(self.wait_for_connection())
         i = 0
         while True:
-            print('main', i)
+            print('[MAIN]', i)
             i += 1
-            await asyncio.sleep(1)
+            await asyncio.sleep(5)
 
 
 if __name__ == '__main__':
