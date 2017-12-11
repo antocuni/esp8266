@@ -9,12 +9,25 @@ frozen modules:
   - mqtt_as [https://github.com/peterhinch/micropython-mqtt]
 """
 
-from sonoff import LED, BUTTON, RELAY
 from machine import Pin, Signal
+from network import WLAN, STA_IF
+from sonoff import LED, BUTTON, RELAY
 import uasyncio as asyncio
 from aswitch import Pushbutton
+import mqtt_as
+mqtt_as.sonoff()  # ugly way to turn on sonoff-specific behavior
 
+mqtt_as.MQTTClient.DEBUG = True
 LOOP = asyncio.get_event_loop()
+SERVER = 'test.mosquitto.org'
+
+def MQTTClient(**kwargs):
+    """
+    Saner API to construct an MQTTClient
+    """
+    config = mqtt_as.config.copy()
+    config.update(kwargs)
+    return mqtt_as.MQTTClient(config)
 
 class SmartPlug(object):
 
@@ -23,6 +36,12 @@ class SmartPlug(object):
     button = Pushbutton(Pin(BUTTON, Pin.IN))
 
     def __init__(self):
+        self.mqtt = MQTTClient(
+            server=SERVER,
+            keepalive=120,
+            clean=True,
+            clean_init=True,
+            )
         self.button.press_func(self.on_click)
         self.button.long_func(self.on_long_press)
         self.button.double_func(self.on_double_click)
@@ -54,7 +73,26 @@ class SmartPlug(object):
     def on_double_click(self):
         print('double click')
 
+    async def wait_for_connection(self):
+        print('[MQTT] Connecting...')
+        sta_if = WLAN(STA_IF)
+        conn = False
+        while not conn:
+            while not sta_if.isconnected():
+                print('[MQTT] Waiting for WiFi...')
+                await asyncio.sleep(1)
+            print('[MQTT] WiFi connected, waiting some more...')
+            await asyncio.sleep(3)
+            try:
+                await self.mqtt.connect()
+                conn = True
+            except OSError:
+                self.mqtt.close()  # Close socket
+                print('[MQTT] Waiting for server...')
+        print('[MQTT] Connected')
+
     async def main(self):
+        LOOP.create_task(self.wait_for_connection())
         i = 0
         while True:
             print('main', i)
