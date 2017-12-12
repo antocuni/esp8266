@@ -9,16 +9,18 @@
 ## gc.collect()
 
 import sys
+import machine
 sys.path.append('libs')
 from led import blink
 
-def connect_wifi(ssid, password, timeout=10):
+def connect_wifi(netdb, timeout=10):
     try:
-        _connect_wifi(ssid, password, timeout)
+        _connect_wifi(netdb, timeout)
     finally:
         blink(0)
 
-def _connect_wifi(ssid, password, timeout):
+def _connect_wifi(netdb, timeout):
+    # lazy import to avoid initializing the network if we don't want it
     import network
     sta_if = network.WLAN(network.STA_IF)
     sta_if.active(True)
@@ -29,19 +31,27 @@ def _connect_wifi(ssid, password, timeout):
 
     print('Scanning for available Wi-Fi networks...')
     blink(1)
-    ssids = [tup[0] for tup in sta_if.scan()]
-    print(len(ssids), 'networks found:')
-    for name in ssids:
-        print('   ', name)
+    found_ssids = [tup[0] for tup in sta_if.scan()]
+    print(len(found_ssids), 'networks found:')
+    for name in found_ssids:
+        print('   ', name.decode('latin1'))
     print()
     #
-    if ssid.encode('latin1') not in ssids:
-        print('SSID %s not found' % ssid)
+    ssid, password = query_ssid(netdb, found_ssids)
+    if not ssid:
+        print('Cannot find any known SSID')
         return
     #
+    print('SSID %s found in wifi.ini, connecting...' % ssid.decode('latin1'))
     sta_if.connect(ssid, password)
     if timeout > 0 and _wait_for_connection(sta_if, ssid, timeout):
         print('network config:', sta_if.ifconfig())
+
+def query_ssid(netdb, found_ssids):
+    for ssid, password in netdb:
+        if ssid in found_ssids:
+            return ssid, password
+    return (None, None)
 
 def _wait_for_connection(sta_if, ssid, timeout):
     import time
@@ -65,19 +75,36 @@ def _wait_for_connection(sta_if, ssid, timeout):
             print('connecting to %s... [%d]' % (ssid, i))
     return True
 
+def parse_wifi_ini():
+    netdb = []
+    try:
+        # sta_if.scan() returns bytes, not str: so, it's easier to simply read
+        # wifi.ini directly as bytes. Not sure what happens in presence of
+        # non-ascii SSIDs :)
+        with open('wifi.ini', 'rb') as f:
+            for line in f:
+                line = line.strip()
+                ssid, password = line.split(None, 1)
+                netdb.append((ssid, password))
+    except OSError:
+        pass
+    return netdb
 
 def auto_connect(timeout=10):
-    try:
-        with open('wifi.ini') as f:
-            content = f.read().strip()
-    except OSError:
-        print('cannot read wifi.ini, skipping Wi-Fi connection')
+    netdb = parse_wifi_ini()
+    if netdb:
+        print('Networks found in wifi.ini:')
+        for ssid, _ in netdb:
+            print('   ', ssid.decode('latin1'))
+        print()
+        connect_wifi(netdb, timeout=timeout)
     else:
-        ssid, password = content.split(' ')
-        print('Wi-Fi auto-connect: %s' % ssid)
-        connect_wifi(ssid, password, timeout=timeout)
+        print('cannot read wifi.ini, skipping Wi-Fi connection')
 
-# if you want to enable Wi-Fi auto-connect, simply put a wifi.ini with only
-# one line
-#    ssid password
+# if you want to enable Wi-Fi auto-connect, simply put a wifi.ini: each line
+# contains a known ssid and a password, separated by a space:
+# $ cat wifi.ini
+# ssid1 pwd1
+# ssid2 pwd2
+# ...
 auto_connect(timeout=0)
