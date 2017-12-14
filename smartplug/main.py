@@ -40,9 +40,13 @@ class SmartPlug(object):
     relay = Signal(Pin(RELAY, Pin.OUT, value=0))
     button = Pushbutton(Pin(BUTTON, Pin.IN))
 
+    # default value so that .log() works even before mqtt has been created
+    mqtt = None
+
     def __init__(self, topic):
         assert isinstance(topic, bytes)
         self.topic = topic
+        self.log_topic = topic + b'/log'
         #
         # initialize status BEFORE starting mqtt: this way, as soon as the
         # first retained message arrives, we are ready to handle it
@@ -58,6 +62,12 @@ class SmartPlug(object):
         self.button.long_func(self.on_long_press)
         self.button.double_func(self.on_double_click)
 
+    def log(self, *args):
+        msg = ' '.join(map(str, args))
+        print(msg)
+        if self.mqtt:
+            LOOP.create_task(self.mqtt.publish(self.log_topic, msg))
+
     @property
     def status(self):
         """
@@ -70,7 +80,7 @@ class SmartPlug(object):
         return self._status
 
     def set_status(self, v, should_publish):
-        print("[STAT] set status to", v)
+        self.log("[STAT] set status to", v)
         self._status = v
         self.led.value(v)
         self.relay.value(v)
@@ -78,23 +88,23 @@ class SmartPlug(object):
             self.publish(self.topic, str(int(v)), retain=True)
 
     def publish(self, topic, msg, retain=False):
-        print('[PUB ]', topic, msg)
+        self.log('[PUB ]', topic, msg)
         LOOP.create_task(self.mqtt.publish(topic, msg, retain=retain,
                                            qos=QOS_AT_LEAST))
 
     def on_receive_topic(self, topic, msg):
-        print('[SUB ] received', topic, msg)
+        self.log('[SUB ] received', topic, msg)
         if topic == self.topic:
             try:
                 value = int(msg)
             except ValueError:
-                print('[SUB ] invalid value, defaulting to 0')
+                self.log('[SUB ] invalid value, defaulting to 0')
                 value = 0
             #
             if self.status == value:
-                print("[SUB ] status already %s, ignoring" % value)
+                self.log("[SUB ] status already %s, ignoring" % value)
                 return
-            print('[SUB ] setting status to', value)
+            self.log('[SUB ] setting status to', value)
             self.set_status(value, should_publish=False)
 
     def on_click(self):
@@ -107,29 +117,29 @@ class SmartPlug(object):
         print('double click')
 
     async def wait_for_connection(self):
-        print('[MQTT] Connecting...')
+        self.log('[MQTT] Connecting...')
         sta_if = WLAN(STA_IF)
         conn = False
         while not conn:
             while not sta_if.isconnected():
-                print('[MQTT] Waiting for WiFi...')
+                self.log('[MQTT] Waiting for WiFi...')
                 await asyncio.sleep(1)
-            print('[MQTT] WiFi connected, waiting some more...')
+            self.log('[MQTT] WiFi connected, waiting some more...')
             await asyncio.sleep(3)
             try:
                 await self.mqtt.connect()
                 conn = True
             except OSError:
                 self.mqtt.close()  # Close socket
-                print('[MQTT] Waiting for server...')
-        print('[MQTT] Connected')
+                self.log('[MQTT] Waiting for server...')
+        self.log('[MQTT] Connected')
         await self.mqtt.subscribe(self.topic, QOS_AT_LEAST)
 
     async def main(self):
         LOOP.create_task(self.wait_for_connection())
         i = 0
         while True:
-            print('[MAIN]', i)
+            self.log('[MAIN]', i)
             i += 1
             await asyncio.sleep(5)
 
