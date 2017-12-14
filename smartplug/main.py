@@ -43,6 +43,10 @@ class SmartPlug(object):
     def __init__(self, topic):
         assert isinstance(topic, bytes)
         self.topic = topic
+        #
+        # initialize status BEFORE starting mqtt: this way, as soon as the
+        # first retained message arrives, we are ready to handle it
+        self.set_status(False, should_publish=False)
         self.mqtt = MQTTClient(
             server=SERVER,
             keepalive=120,
@@ -53,7 +57,6 @@ class SmartPlug(object):
         self.button.press_func(self.on_click)
         self.button.long_func(self.on_long_press)
         self.button.double_func(self.on_double_click)
-        self.status = False
 
     @property
     def status(self):
@@ -62,20 +65,22 @@ class SmartPlug(object):
         in sync:
           - the status led
           - the relay
+          - the mqtt topic (which is retained)
         """
         return self._status
 
-    @status.setter
-    def status(self, v):
+    def set_status(self, v, should_publish):
         print("[STAT] set status to", v)
         self._status = v
         self.led.value(v)
         self.relay.value(v)
-        self.publish(self.topic, str(int(v)))
+        if should_publish:
+            self.publish(self.topic, str(int(v)), retain=True)
 
-    def publish(self, topic, msg):
+    def publish(self, topic, msg, retain=False):
         print('[PUB ]', topic, msg)
-        LOOP.create_task(self.mqtt.publish(topic, msg, qos=QOS_AT_LEAST))
+        LOOP.create_task(self.mqtt.publish(topic, msg, retain=retain,
+                                           qos=QOS_AT_LEAST))
 
     def on_receive_topic(self, topic, msg):
         print('[SUB ] received', topic, msg)
@@ -85,12 +90,15 @@ class SmartPlug(object):
             except ValueError:
                 print('[SUB ] invalid value, defaulting to 0')
                 value = 0
-            if self.status != value:
-                print('[SUB ] setting status to', value)
-                self.status = value
+            #
+            if self.status == value:
+                print("[SUB ] status already %s, ignoring" % value)
+                return
+            print('[SUB ] setting status to', value)
+            self.set_status(value, should_publish=False)
 
     def on_click(self):
-        self.status = not self.status
+        self.set_status(not self.status, should_publish=True)
 
     def on_long_press(self):
         print('long press')

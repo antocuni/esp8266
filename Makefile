@@ -12,7 +12,7 @@ flash:
 
 boot: kill-screen
 	ampy -p $(TTY) put boot.py
-	#if [ -f wifi.ini ]; then ampy -p $(TTY) put wifi.ini; fi
+	if [ -f wifi.ini ]; then ampy -p $(TTY) put wifi.ini; fi
 
 libs: kill-screen
 	#ampy -p $(TTY) mkdir libs
