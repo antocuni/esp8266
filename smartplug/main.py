@@ -51,6 +51,7 @@ class SmartPlug(object):
         # initialize status BEFORE starting mqtt: this way, as soon as the
         # first retained message arrives, we are ready to handle it
         self.set_status(False, should_publish=False)
+        self.status_received = False
         self.mqtt = MQTTClient(
             server=SERVER,
             keepalive=120,
@@ -85,11 +86,12 @@ class SmartPlug(object):
         self.led.value(v)
         self.relay.value(v)
         if should_publish:
-            self.publish(self.topic, str(int(v)), retain=True)
+            self.publish_status()
 
-    def publish(self, topic, msg, retain=False):
-        self.log('[PUB ]', topic, msg)
-        LOOP.create_task(self.mqtt.publish(topic, msg, retain=retain,
+    def publish_status(self):
+        msg = str(int(self.status))
+        self.log('[PUB ]', self.topic, msg)
+        LOOP.create_task(self.mqtt.publish(self.topic, msg, retain=True,
                                            qos=QOS_AT_LEAST))
 
     def on_receive_topic(self, topic, msg):
@@ -101,6 +103,7 @@ class SmartPlug(object):
                 self.log('[SUB ] invalid value, defaulting to 0')
                 value = 0
             #
+            self.status_received = True
             if self.status == value:
                 self.log("[SUB ] status already %s, ignoring" % value)
                 return
@@ -140,6 +143,12 @@ class SmartPlug(object):
         i = 0
         while True:
             self.log('[MAIN]', i)
+            #
+            # periodically publish the status, but ONLY if we received at
+            # least one message from the broker. Else, at startup we send 0
+            # before we had the chance to receive the reatined message
+            if self.status_received and i % 12 == 0: # once every 60 seconds
+                self.publish_status()
             i += 1
             await asyncio.sleep(5)
 
