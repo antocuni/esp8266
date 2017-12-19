@@ -9,6 +9,7 @@ frozen modules:
   - mqtt_as [https://github.com/peterhinch/micropython-mqtt]
 """
 
+import time
 from micropython import const
 from machine import Pin, Signal
 from network import WLAN, STA_IF
@@ -34,6 +35,22 @@ def MQTTClient(**kwargs):
     config.update(kwargs)
     return mqtt_as.MQTTClient(config)
 
+def fmtime(t=None):
+    """
+    Smart time format
+    """
+    if t is None:
+        t = time.localtime()
+    elif isinstance(t, int):
+        t = time.localtime(t)
+    elif isinstance(t, tuple):
+        pass # nothing to do
+    else:
+        raise TypeError("Expected None, int or tuple")
+    #
+    return '%d-%02d-%02d %02d:%02d:%02d' % t[:6]
+
+
 class SmartPlug(object):
 
     led = Signal(Pin(LED, Pin.OUT, value=0), invert=True)
@@ -47,6 +64,7 @@ class SmartPlug(object):
         assert isinstance(topic, bytes)
         self.topic = topic
         self.log_topic = topic + b'/log'
+        self.wifi_connected = False
         #
         # initialize status BEFORE starting mqtt: this way, as soon as the
         # first retained message arrives, we are ready to handle it
@@ -127,6 +145,7 @@ class SmartPlug(object):
             while not sta_if.isconnected():
                 self.log('[MQTT] Waiting for WiFi...')
                 await asyncio.sleep(1)
+            self.wifi_connected = True
             self.log('[MQTT] WiFi connected, waiting some more...')
             await asyncio.sleep(3)
             try:
@@ -138,8 +157,40 @@ class SmartPlug(object):
         self.log('[MQTT] Connected')
         await self.mqtt.subscribe(self.topic, QOS_AT_LEAST)
 
+    async def timer(self):
+        import ntptime
+        # first, wait for wifi connection and set time
+        while not self.wifi_connected:
+            self.log('[TIME] Waiting for Wifi...')
+            await asyncio.sleep(1)
+        #
+        self.log('[TIME] setting NTP time')
+        ntptime.settime()
+        self.log('[TIME] UTC time: %s' % fmtime())
+        while True:
+            t = time.time()
+            self.log('[TIME] woke up at %s' % fmtime(t))
+            y, m, d, hh, mm, ss = time.localtime(t)[:6]
+            # turn the lights on between 17 and 1 CEST, i.e. 16-24 UTC
+            should_be_on = hh >= 16
+            if self.status != should_be_on:
+                self.log('[TIME] changing status')
+                self.set_status(should_be_on, should_publish=True)
+            #
+            # now, determine how much to sleep before next change
+            if should_be_on:
+                # wait until next day: to determine it, we do 23:59:59 + 1 second
+                t_end = time.mktime((y, m, d, 23, 59, 59, None, None)) + 1
+            else:
+                # wait until 16 of the current day
+                t_end = time.mktime((y, m, d, 16, 0, 0, None, None))
+            t_diff = t_end - t
+            self.log('[TIME] sleeping for %d seconds, until %s' % (t_diff, fmtime(t_end)))
+            await asyncio.sleep(t_diff)
+
     async def main(self):
         LOOP.create_task(self.wait_for_connection())
+        LOOP.create_task(self.timer())
         i = 0
         while True:
             self.log('[MAIN]', i)
