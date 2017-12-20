@@ -39,8 +39,9 @@ button_relay: kill-screen
 	ampy -p $(TTY) put button_relay/main.py main.py
 
 smartplug: kill-screen
+	~/micropython/mpy-cross/mpy-cross smartplug/smartplug.py
 	ampy -p $(TTY) put smartplug/main.py main.py
-	#ampy -p $(TTY) put smartplug/main.mpy main.mpy
+	ampy -p $(TTY) put smartplug/smartplug.mpy smartplug.mpy
 
 kill-screen:
 	@if screen -ls | grep -q upython; then screen -X -S upython quit; fi
