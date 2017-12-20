@@ -9,8 +9,9 @@ frozen modules:
   - mqtt_as [https://github.com/peterhinch/micropython-mqtt]
 """
 
+import gc
 import time
-from micropython import const
+from micropython import const, mem_info
 from machine import Pin, Signal
 from network import WLAN, STA_IF
 from sonoff import LED, BUTTON, RELAY
@@ -18,6 +19,8 @@ import uasyncio as asyncio
 from aswitch import Pushbutton
 import mqtt_as
 mqtt_as.sonoff()  # ugly way to turn on sonoff-specific behavior
+mem_info(1)
+
 
 mqtt_as.MQTTClient.DEBUG = True
 LOOP = asyncio.get_event_loop()
@@ -82,7 +85,7 @@ class SmartPlug(object):
         self.button.double_func(self.on_double_click)
 
     def log(self, *args):
-        msg = ' '.join(map(str, args))
+        msg = '[%s] %s' % (fmtime(), ' '.join(map(str, args)))
         print(msg)
         if self.mqtt:
             LOOP.create_task(self.mqtt.publish(self.log_topic, msg))
@@ -164,12 +167,23 @@ class SmartPlug(object):
             self.log('[TIME] Waiting for Wifi...')
             await asyncio.sleep(1)
         #
-        self.log('[TIME] setting NTP time')
-        ntptime.settime()
-        self.log('[TIME] UTC time: %s' % fmtime())
+        is_time_correct = False
         while True:
+            self.log('[TIME] setting NTP time')
+            try:
+                ntptime.settime()
+            except OSError:
+                print('[TIME] cannot set NTP time')
+            else:
+                is_time_correct = True
+                self.log('[TIME] UTC time: %s' % fmtime())
+            #
+            if not is_time_correct:
+                self.log('[TIME] time not reliable, retrying...')
+                await asyncio.sleep(1)
+                continue
+            #
             t = time.time()
-            self.log('[TIME] woke up at %s' % fmtime(t))
             y, m, d, hh, mm, ss = time.localtime(t)[:6]
             # turn the lights on between 17 and 1 CEST, i.e. 16-24 UTC
             should_be_on = hh >= 16
@@ -185,8 +199,11 @@ class SmartPlug(object):
                 # wait until 16 of the current day
                 t_end = time.mktime((y, m, d, 16, 0, 0, None, None))
             t_diff = t_end - t
-            self.log('[TIME] sleeping for %d seconds, until %s' % (t_diff, fmtime(t_end)))
+            t_diff = min(t_diff, 1*60) # sleep at max 10 minutes
+            self.log('[TIME] sleeping for %d seconds, until %s' % (
+                t_diff, fmtime(t + t_diff)))
             await asyncio.sleep(t_diff)
+            self.log('[TIME] woke up at %s' % fmtime(t))
 
     async def main(self):
         LOOP.create_task(self.wait_for_connection())
@@ -194,17 +211,20 @@ class SmartPlug(object):
         i = 0
         while True:
             self.log('[MAIN]', i)
+            mem_info()
             #
             # periodically publish the status, but ONLY if we received at
             # least one message from the broker. Else, at startup we send 0
             # before we had the chance to receive the reatined message
-            if self.status_received and i % 12 == 0: # once every 60 seconds
+            if self.status_received:
                 self.publish_status()
             i += 1
-            await asyncio.sleep(5)
+            await asyncio.sleep(60)
 
-
-if __name__ == '__main__':
+def main():
     app = SmartPlug(b'/antocuni/xmas')
     LOOP.run_until_complete(app.main())
     print('exit')
+
+if __name__ == '__main__':
+    main()
