@@ -203,7 +203,7 @@ class SmartPlug(object):
             self.log('[TIME] sleeping for %d seconds, until %s' % (
                 t_diff, fmtime(t + t_diff)))
             await asyncio.sleep(t_diff)
-            self.log('[TIME] woke up at %s' % fmtime(t))
+            self.log('[TIME] woke up at %s' % fmtime())
 
     async def main(self):
         LOOP.create_task(self.wait_for_connection())
