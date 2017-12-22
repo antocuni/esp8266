@@ -9,9 +9,11 @@ frozen modules:
   - mqtt_as [https://github.com/peterhinch/micropython-mqtt]
 """
 
+import sys
 import gc
 import time
 from micropython import const, mem_info
+import machine
 from machine import Pin, Signal
 from network import WLAN, STA_IF
 from sonoff import LED, BUTTON, RELAY
@@ -19,7 +21,7 @@ import uasyncio as asyncio
 from aswitch import Pushbutton
 import mqtt_as
 mqtt_as.sonoff()  # ugly way to turn on sonoff-specific behavior
-mem_info(1)
+#mem_info(1)
 
 
 mqtt_as.MQTTClient.DEBUG = True
@@ -223,8 +225,18 @@ class SmartPlug(object):
 
 def main():
     app = SmartPlug(b'/antocuni/xmas')
-    LOOP.run_until_complete(app.main())
-    print('exit')
+    try:
+        LOOP.run_until_complete(app.main())
+    except KeyboardInterrupt:
+        print('CTRL-C')
+    except Exception as e:
+        print('=================================')
+        print('Exception caught, automatic reset')
+        print()
+        sys.print_exception(e)
+        print()
+        print('=================================')
+        machine.reset()
 
 if __name__ == '__main__':
     main()
