@@ -162,6 +162,18 @@ class SmartPlug(object):
         self.log('[MQTT] Connected')
         await self.mqtt.subscribe(self.topic, QOS_AT_LEAST)
 
+    def robust_ntptime_set(self):
+        import ntptime
+        try:
+            ntptime.settime()
+        except Exception as e:
+            self.log('[TIME] caught exception inside ntptime, ignoring')
+            sys.print_exception(e)
+            print()
+            return False
+        else:
+            return True
+
     async def timer(self):
         import ntptime
         # first, wait for wifi connection and set time
@@ -172,13 +184,13 @@ class SmartPlug(object):
         is_time_correct = False
         while True:
             self.log('[TIME] setting NTP time')
-            try:
-                ntptime.settime()
-            except OSError:
-                print('[TIME] cannot set NTP time')
-            else:
+            if self.robust_ntptime_set():
                 is_time_correct = True
                 self.log('[TIME] UTC time: %s' % fmtime())
+            else:
+                # note: we do NOT want to set is_time_correct: we assume that
+                # after the first time we set the time, it will stay "correct"
+                print('[TIME] cannot set NTP time')
             #
             if not is_time_correct:
                 self.log('[TIME] time not reliable, retrying...')
