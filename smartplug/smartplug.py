@@ -182,6 +182,7 @@ class SmartPlug(object):
             await asyncio.sleep(1)
         #
         is_time_correct = False
+        previous_desired_state = None
         while True:
             self.log('[TIME] setting NTP time')
             if self.robust_ntptime_set():
@@ -200,13 +201,14 @@ class SmartPlug(object):
             t = time.time()
             y, m, d, hh, mm, ss = time.localtime(t)[:6]
             # turn the lights on between 17 and 1 CEST, i.e. 16-24 UTC
-            should_be_on = hh >= 16
-            if self.status != should_be_on:
+            desired_state = hh >= 16
+            if desired_state != previous_desired_state:
                 self.log('[TIME] changing status')
-                self.set_status(should_be_on, should_publish=True)
+                self.set_status(desired_state, should_publish=True)
+            previous_desired_state = desired_state
             #
             # now, determine how much to sleep before next change
-            if should_be_on:
+            if desired_state:
                 # wait until next day: to determine it, we do 23:59:59 + 1 second
                 t_end = time.mktime((y, m, d, 23, 59, 59, None, None)) + 1
             else:
