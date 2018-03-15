@@ -1,3 +1,13 @@
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
+#include "wificonfig.h"
+
+#define mqtt_server "test.mosquitto.org"
+
+/* ================================================== *
+ * code to read the temperature out of the thermistor *
+ * ================================================== */
+
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(x[0]))
 
 const float table[][2] = {
@@ -34,11 +44,6 @@ const float table[][2] = {
 const int vcc = 3300;
 const int R2 = 10000;
 
-void setup() {
-  // put your setup code here, to run once:
-  Serial.begin(9600);
-}
-
 float read_temp() {
   int adc_value, board_mv;
   float r_sensor;
@@ -62,9 +67,75 @@ float read_temp() {
       return t2;
     }
   }
+  return -1; /* error? */
 }
 
-void loop() {
-  float t = read_temp();
-  Serial.printf("temp = %f\n", t);
+
+/* ================================================== *
+ * wifi, setup and main loop                          *
+ * ================================================== */
+
+WiFiClient espClient;
+PubSubClient client(espClient);
+
+void setup() {
+  Serial.begin(9600);
+  setup_wifi();
+  client.setServer(mqtt_server, 1883); 
 }
+
+void setup_wifi() {
+  delay(10);
+  // We start by connecting to a WiFi network
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(wifi_ssid);
+
+  WiFi.begin(wifi_ssid, wifi_password);
+
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println("");
+  Serial.println("WiFi connected");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP());
+}
+
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    // Attempt to connect
+    if (client.connect("ESP8266Client")) {
+      Serial.println("connected");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" try again in 5 seconds");
+      // Wait 5 seconds before retrying
+      delay(5000);
+    }
+  }
+}
+
+
+long lastMsg = 0;
+
+void loop() {
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+
+  long now = millis();
+  if (now - lastMsg > 1000) {
+    lastMsg = now;
+    float temp = read_temp();
+    Serial.printf("Temperature: %f\n", temp);
+    client.publish("/antocuni/fridge", String(temp).c_str(), true);
+    }
+}  
+
