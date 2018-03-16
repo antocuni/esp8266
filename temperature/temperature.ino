@@ -80,6 +80,10 @@ PubSubClient client(espClient);
 
 void setup() {
   Serial.begin(9600);
+  while(!Serial)
+    ;
+  Serial.println("I'm awake.");
+
   setup_wifi();
   client.setServer(mqtt_server, 1883); 
 }
@@ -121,21 +125,19 @@ void reconnect() {
   }
 }
 
-
-long lastMsg = 0;
-
 void loop() {
   if (!client.connected()) {
     reconnect();
   }
   client.loop();
-
-  long now = millis();
-  if (now - lastMsg > 1000) {
-    lastMsg = now;
-    float temp = read_temp();
-    Serial.printf("Temperature: %f\n", temp);
-    client.publish("/antocuni/fridge", String(temp).c_str(), true);
-    }
+  float temp = read_temp();
+  Serial.printf("Temperature 2: %f\n", temp);
+  client.publish("/antocuni/fridge", String(temp).c_str(), true);
+  client.loop();
+  Serial.println("Going into deep sleep for 1 minutes");
+  ESP.deepSleep(60*1e6); // in us
+  //ESP.deepSleep(60*5*1e6); // in us
+  //ESP.deepSleep(5*1e6); // in us
+    
 }  
 
