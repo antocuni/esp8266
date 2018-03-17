@@ -131,7 +131,7 @@ void loop() {
   client.loop();
 
   long now = millis();
-  if (now - lastMsg > 1000) {
+  if (now - lastMsg > 10000) {
     lastMsg = now;
     float temp = read_temp();
     Serial.printf("Temperature: %f\n", temp);
