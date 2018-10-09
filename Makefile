@@ -1,14 +1,19 @@
 TTY=/dev/ttyUSB0
-MYBOARD=sonoff
+#MYBOARD=sonoff
+MYBOARD=wemos_d1
 
 # remember to put the board in upload mode before running this
 erase:
 	esptool.py --port $(TTY) erase_flash
 
 # remember to put the board in upload mode before running this
-flash:
+flash_sonoff:
 	# this works for sonoff, probably not for D1 Mini
-	esptool.py --port $(TTY) write_flash -fs 1MB -fm dout 0x0 firmware/firmware-combined.bin
+	#esptool.py --port $(TTY) write_flash -fs 1MB -fm dout 0x0 firmware/firmware-combined.bin
+
+flash_wemos:
+	esptool.py --port $(TTY) --baud 460800 write_flash --flash_size=detect 0 firmware/esp8266-20180511-v1.9.4.bin
+
 
 boot: kill-screen
 	ampy -p $(TTY) put boot.py
@@ -22,6 +27,7 @@ libs: kill-screen
 	ampy -p $(TTY) put libs/led.py libs/led.py
 	ampy -p $(TTY) put libs/button.py libs/button.py
 	ampy -p $(TTY) put libs/potentiometer.py libs/potentiometer.py
+	ampy -p $(TTY) put libs/pcd8544.py libs/pcd8544.py
 
 standing_wave: kill-screen
 	ampy -p $(TTY) put standing_wave/main.py main.py
@@ -40,6 +46,9 @@ button_relay: kill-screen
 
 smartplug: kill-screen
 	ampy -p $(TTY) put smartplug/main.py main.py
+
+nokia_lcd: kill-screen
+	ampy -p $(TTY) put nokia_lcd/main.py main.py
 
 kill-screen:
 	@if screen -ls | grep -q upython; then screen -X -S upython quit; fi
