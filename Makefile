@@ -28,6 +28,7 @@ libs: kill-screen
 	ampy -p $(TTY) put libs/button.py libs/button.py
 	ampy -p $(TTY) put libs/potentiometer.py libs/potentiometer.py
 	ampy -p $(TTY) put libs/pcd8544.py libs/pcd8544.py
+	ampy -p $(TTY) put libs/encoder.py libs/encoder.py
 
 standing_wave: kill-screen
 	ampy -p $(TTY) put standing_wave/main.py main.py
@@ -49,6 +50,9 @@ smartplug: kill-screen
 
 nokia_lcd: kill-screen
 	ampy -p $(TTY) put nokia_lcd/main.py main.py
+
+rot-encoder: kill-screen
+	ampy -p $(TTY) put rot-encoder/main.py main.py
 
 kill-screen:
 	@if screen -ls | grep -q upython; then screen -X -S upython quit; fi
