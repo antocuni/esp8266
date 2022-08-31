@@ -84,6 +84,14 @@ class Encoder(object):
 
     def set_callbacks(self, callback=None):
         mode = Pin.IRQ_RISING | Pin.IRQ_FALLING
+
+        ## def clk(line):
+        ##     print('clk', self.pin_clk.value())
+        ## def dt(line):
+        ##     print('dt ', self.pin_clk.value())
+        ## self.irq_clk = self.pin_clk.irq(trigger=mode, handler=clk) #callback)
+        ## self.irq_dt = self.pin_dt.irq(trigger=mode, handler=dt) #callback)
+
         self.irq_clk = self.pin_clk.irq(trigger=mode, handler=callback)
         self.irq_dt = self.pin_dt.irq(trigger=mode, handler=callback)
 

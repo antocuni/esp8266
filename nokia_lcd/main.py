@@ -10,7 +10,7 @@ cs = Pin(2)
 dc = Pin(15)
 rst = Pin(0)
 
-bl = Pin(12, Pin.OUT, value=0)
+#bl = Pin(12, Pin.OUT, value=0)
 lcd = pcd8544.PCD8544_FRAMEBUF(spi, cs, dc, rst)
 
 def text_inverse(lcd, t, x, y, color):

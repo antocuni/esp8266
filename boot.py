@@ -107,4 +107,4 @@ def auto_connect(timeout=10):
 # ssid1 pwd1
 # ssid2 pwd2
 # ...
-auto_connect(timeout=0)
+auto_connect(timeout=5)

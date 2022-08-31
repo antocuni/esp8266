@@ -54,6 +54,7 @@ nokia_lcd: kill-screen
 	ampy -p $(TTY) put nokia_lcd/main.py main.py
 
 rot-encoder: kill-screen
+	#ampy -p $(TTY) put libs/encoder.py libs/encoder.py
 	ampy -p $(TTY) put rot-encoder/main.py main.py
 
 kill-screen:
@@ -64,4 +65,3 @@ kill-screen:
 # DO NOT USE ctrl-A d, else the tty stays busy
 screen:
 	screen -S upython $(TTY) 115200
-
